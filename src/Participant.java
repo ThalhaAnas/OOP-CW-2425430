@@ -40,15 +40,35 @@ public class Participant {
     public void setPreferredGame(String preferredGame) {this.preferredGame = preferredGame;}
 
     public int getSkillLevel() {return skillLevel;}
-    public void setSkillLevel(int skillLevel) {this.skillLevel = skillLevel;}
+    public void setSkillLevel(int skillLevel) {
+        if (skillLevel >= 1 && skillLevel <=10) {
+        this.skillLevel = skillLevel;
+    }
+    else {
+        throw new IllegalArgumentException("Skill level must be between 1 and 10");
+    }
+    }
 
     public String getPreferredRole() {return preferredRole;}
     public void setPreferredRole(String preferredRole) {this.preferredRole = preferredRole;}
 
     public int getPersonalityScore() {return personalityScore;}
-    public void setPersonalityScore(int personalityScore) {this.personalityScore = personalityScore;}
+    public void setPersonalityScore(int personalityScore) {
+        if (personalityScore >= 0 && personalityScore <= 100) {
+            this.personalityScore = personalityScore;
+        }
+        else {
+            throw new IllegalArgumentException("Personality score must be between 0 and 100");
+        }
+    }
 
     public String getPersonalityType() {return personalityType;}
     public void setPersonalityType(String personalityType) {this.personalityType = personalityType;}
+
+    @Override
+    public String toString() {
+        return "Participant [id=" + id + ", name=" + name + ", game=" + preferredGame + ", skillLevel=" + skillLevel + "role=" + preferredRole + ", personalityType=" + personalityType + "]";
+
+    }
 
 }
