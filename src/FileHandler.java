@@ -73,5 +73,29 @@ public class FileHandler {
         //}
     }
 
+    public void saveParticipantsToCSV(Participant participant, String filePath) {
+        try{
+            boolean fileExists = new File(filePath).exists();
+
+            FileWriter writer = new FileWriter(filePath, true);
+
+            if (!fileExists) {
+                writer.write("ID,Name,Email,PreferredGame,SkillLevel,PreferredRole,PersonalityScore,PersonalityType\n");
+            }
+
+            writer.write(participant.getId() + "," +
+                    participant.getName() + "," +
+                    participant.getEmail() + "," +
+                    participant.getPreferredGame() + "," +
+                    participant.getPersonalityScore() + "," +
+                    participant.getPersonalityType() + "\n");
+
+            writer.close();
+            System.out.println("Participant saved to CSV: " + participant.getName());
+
+        }catch(IOException e){
+            System.out.println("Error saving participant to CSV: " + e.getMessage());
+        }
+    }
 
 }
