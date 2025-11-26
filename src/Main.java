@@ -140,10 +140,35 @@ public class Main {
             return;
         }
 
-        System.out.println("Running team formation...");
-        // For now, create simple random teams
-        formedTeams = createSimpleTeams();
-        System.out.println("✅ Created " + formedTeams.size() + " teams");
+        System.out.println("🔧 Running balanced team formation...");
+
+        // Use the real balanced team strategy
+        TeamFormationStrategy strategy = new BalancedTeamStrategy();
+        formedTeams = strategy.formTeams(allParticipants, teamSize);
+
+        // Show team statistics
+        showTeamStatistics();
+    }
+
+    private static void showTeamStatistics() {
+        System.out.println("\n📊 TEAM STATISTICS:");
+        for (Team team : formedTeams) {
+            Map<String, Integer> personalityCount = new HashMap<>();
+            Map<String, Integer> roleCount = new HashMap<>();
+            Map<String, Integer> gameCount = new HashMap<>();
+
+            for (Participant member : team.getMembers()) {
+                personalityCount.merge(member.getPersonalityType(), 1, Integer::sum);
+                roleCount.merge(member.getPreferredRole(), 1, Integer::sum);
+                gameCount.merge(member.getPreferredGame(), 1, Integer::sum);
+            }
+
+            System.out.println(team.getTeamID() +
+                    " | Size: " + team.getTeamSize() +
+                    " | Avg Skill: " + String.format("%.1f", team.getAverageSkill()) +
+                    " | Personalities: " + personalityCount +
+                    " | Roles: " + roleCount.keySet().size() + " unique");
+        }
     }
 
     private static void viewFormedTeams() {
