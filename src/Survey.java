@@ -1,10 +1,14 @@
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Survey {
-
     private Scanner scanner = new Scanner(System.in);
     private FileHandler fileHandler = new FileHandler();
     private final String CSV_PATH = "data/participants_sample.csv";
+
+    // ADD THIS: Thread pool for concurrent survey processing
+    private static final ExecutorService surveyExecutor = Executors.newFixedThreadPool(3); // Can handle 3 simultaneous surveys
 
     public Participant conductSurvey() {
         System.out.println("\n=== TeamMate Registration Survey ===");
@@ -61,8 +65,7 @@ public class Survey {
         SurveyProcessor processor =
                 new SurveyProcessor(participant, fileHandler, CSV_PATH);
 
-        Thread thread = new Thread(processor);
-        thread.start();
+        surveyExecutor.execute(processor);
 
         System.out.println("\n🧵 Your responses are being processed in the background...");
         System.out.println("Thank you " + name + "!");
