@@ -1,12 +1,16 @@
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 public class Main {
+    private static ExecutorService teamExecutor = Executors.newFixedThreadPool(2);
     private static Scanner scanner = new Scanner(System.in);
     private static FileHandler fileHandler = new FileHandler();
     private static Survey survey = new Survey();
     private static List<Participant> allParticipants = new ArrayList<>();
     private static List<Team> formedTeams = new ArrayList<>();
-    private static int teamSize = 4; // default team size
+    static int teamSize = 4; // default team size
 
     public static void main(String[] args) {
         System.out.println("=== Welcome to TeamMate System ===");
@@ -130,6 +134,7 @@ public class Main {
     }
 
     private static void runTeamFormation() {
+
         if (allParticipants.isEmpty()) {
             System.out.println("❌ No participants loaded. Please load CSV first.");
             return;
@@ -140,34 +145,99 @@ public class Main {
             return;
         }
 
-        System.out.println("🔧 Running balanced team formation...");
+        System.out.println("🔧 Running parallel team formation using 2 threads...");
 
-        // Use the real balanced team strategy
-        TeamFormationStrategy strategy = new BalancedTeamStrategy();
-        formedTeams = strategy.formTeams(allParticipants, teamSize);
+        try {
+            // Split participants into 2 groups
+            int mid = allParticipants.size() / 2;
 
-        // Show team statistics
-        showTeamStatistics();
+            List<Participant> group1 = allParticipants.subList(0, mid);
+            List<Participant> group2 = allParticipants.subList(mid, allParticipants.size());
+
+            // Submit tasks
+            Future<List<Team>> f1 = teamExecutor.submit(new TeamFormationTask(group1, teamSize));
+            Future<List<Team>> f2 = teamExecutor.submit(new TeamFormationTask(group2, teamSize));
+
+            // Get the results
+            List<Team> t1 = f1.get();
+            List<Team> t2 = f2.get();
+
+            // Combine the results
+            formedTeams = new ArrayList<>();
+            formedTeams.addAll(t1);
+            formedTeams.addAll(t2);
+
+            // FIX: Rename teams sequentially so no ID duplicates
+            for (int i = 0; i < formedTeams.size(); i++) {
+                formedTeams.get(i).setTeamID("Team " + (i + 1));
+            }
+
+            System.out.println("✅ Teams formed successfully using concurrency!");
+            showTeamStatistics();
+            showFormationSummary();
+
+        } catch (Exception e) {
+            System.out.println("❌ Error during parallel team formation: " + e.getMessage());
+        }
     }
+
 
     private static void showTeamStatistics() {
         System.out.println("\n📊 TEAM STATISTICS:");
         for (Team team : formedTeams) {
-            Map<String, Integer> personalityCount = new HashMap<>();
-            Map<String, Integer> roleCount = new HashMap<>();
-            Map<String, Integer> gameCount = new HashMap<>();
+            // Count personality types
+            int leaders = 0, thinkers = 0, balanced = 0;
+            Set<String> roles = new HashSet<>();
+            Set<String> games = new HashSet<>();
 
             for (Participant member : team.getMembers()) {
-                personalityCount.merge(member.getPersonalityType(), 1, Integer::sum);
-                roleCount.merge(member.getPreferredRole(), 1, Integer::sum);
-                gameCount.merge(member.getPreferredGame(), 1, Integer::sum);
+                switch (member.getPersonalityType()) {
+                    case "Leader": leaders++; break;
+                    case "Thinker": thinkers++; break;
+                    case "Balanced": balanced++; break;
+                }
+                roles.add(member.getPreferredRole());
+                games.add(member.getPreferredGame());
             }
 
             System.out.println(team.getTeamID() +
                     " | Size: " + team.getTeamSize() +
                     " | Avg Skill: " + String.format("%.1f", team.getAverageSkill()) +
-                    " | Personalities: " + personalityCount +
-                    " | Roles: " + roleCount.keySet().size() + " unique");
+                    " | Personalities: L:" + leaders + " T:" + thinkers + " B:" + balanced +
+                    " | Roles: " + roles.size() + " unique" +
+                    " | Games: " + games.size() + " unique");
+        }
+    }
+
+    private static void showFormationSummary() {
+        System.out.println("\n📈 FORMATION SUMMARY:");
+        System.out.println("Total teams formed: " + formedTeams.size());
+        System.out.println("Total participants used: " + formedTeams.stream().mapToInt(Team::getTeamSize).sum());
+        System.out.println("Target team size: " + teamSize);
+
+        // Count teams by size
+        Map<Integer, Integer> sizeDistribution = new HashMap<>();
+        for (Team team : formedTeams) {
+            sizeDistribution.merge(team.getTeamSize(), 1, Integer::sum);
+        }
+
+        System.out.println("Team size distribution:");
+        for (int size = teamSize - 2; size <= teamSize + 2; size++) {
+            if (sizeDistribution.containsKey(size)) {
+                System.out.println("  " + size + " members: " + sizeDistribution.get(size) + " teams");
+            }
+        }
+
+        // Check if any teams are significantly smaller than target
+        int smallTeams = formedTeams.stream()
+                .filter(team -> team.getTeamSize() < teamSize - 1)
+                .mapToInt(team -> 1)
+                .sum();
+
+        if (smallTeams > 0) {
+            System.out.println("⚠️  Warning: " + smallTeams + " teams are significantly smaller than target size");
+        } else {
+            System.out.println("✅ All teams are reasonably sized");
         }
     }
 
@@ -191,25 +261,6 @@ public class Main {
         }
 
         fileHandler.saveTeamsToCSV(formedTeams, "data/formed_teams.csv");
-    }
-
-    // SIMPLE TEAM FORMATION (for now)
-    private static List<Team> createSimpleTeams() {
-        List<Team> teams = new ArrayList<>();
-        List<Participant> participants = new ArrayList<>(allParticipants);
-        Collections.shuffle(participants); // Random shuffle
-
-        int teamCount = 0;
-        for (int i = 0; i < participants.size(); i += teamSize) {
-            if (i + teamSize <= participants.size()) {
-                Team team = new Team("Team-" + (++teamCount));
-                for (int j = i; j < i + teamSize; j++) {
-                    team.addMember(participants.get(j));
-                }
-                teams.add(team);
-            }
-        }
-        return teams;
     }
 
     // HELPER METHOD
