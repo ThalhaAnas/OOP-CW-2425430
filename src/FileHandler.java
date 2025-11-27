@@ -162,19 +162,27 @@ public class FileHandler {
     public void saveTeamsToCSV(List<Team> teams, String filePath) {
         try {
             FileWriter writer = new FileWriter(filePath);
-            writer.write("TeamID,Members,AverageSkill,TeamSize\n");
+
+            // Header with team info and individual participant details
+            writer.write("TeamID,ParticipantID,ParticipantName,PreferredRole,PreferredGame,PersonalityType,SkillLevel,AverageSkill,TeamSize\n");
 
             for (Team team : teams) {
-                String members = "";
-                for (Participant member : team.getMembers()) {
-                    if (!members.isEmpty()) members += "; ";
-                    members += member.getName() + "(" + member.getPreferredRole() + ")";
-                }
+                List<Participant> members = team.getMembers();
+                double averageSkill = team.getAverageSkill();
+                int teamSize = team.getTeamSize();
 
-                writer.write(team.getTeamID() + "," +
-                        "\"" + members + "\"," +
-                        String.format("%.2f", team.getAverageSkill()) + "," +
-                        team.getTeamSize() + "\n");
+                // Create one row for each team member
+                for (Participant member : members) {
+                    writer.write(team.getTeamID() + "," +
+                            member.getId() + "," +
+                            member.getName() + "," +
+                            member.getPreferredRole() + "," +
+                            member.getPreferredGame() + "," +
+                            member.getPersonalityType() + "," +
+                            member.getSkillLevel() + "," +
+                            String.format("%.2f", averageSkill) + "," +
+                            teamSize + "\n");
+                }
             }
 
             writer.close();
