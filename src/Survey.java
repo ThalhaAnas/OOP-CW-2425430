@@ -7,25 +7,30 @@ public class Survey {
     private FileHandler fileHandler = new FileHandler();
     private final String CSV_PATH = "data/participants_sample.csv";
 
-    // ADD THIS: Thread pool for concurrent survey processing
-    private static final ExecutorService surveyExecutor = Executors.newFixedThreadPool(3); // Can handle 3 simultaneous surveys
+    // Thread pool for concurrent survey processing
+    private static final ExecutorService surveyExecutor = Executors.newFixedThreadPool(3); // 3 concurrent survey processors
 
+    // conduct survey and submit processing to executor
     public Participant conductSurvey() {
+        SystemLogger.info("Survey started for new participant");
         System.out.println("\n=== TeamMate Registration Survey ===");
 
         // Get name
         System.out.print("Enter your name: ");
         String name = scanner.nextLine();
+        SystemLogger.info("Name entered: " + name);
 
         // Get email
         System.out.print("Enter your email username (without @university.edu): ");
         String emailUser = scanner.nextLine();
         String email = emailUser + "@university.edu";
         System.out.println("Your email: " + email);
+        SystemLogger.info("Email generated: " + email);
 
         // Generate ID
         String id = fileHandler.generateNextParticipantId(CSV_PATH);
         System.out.println("Your ID: " + id);
+        SystemLogger.info("Generated ID: " + id);
 
         // Personality questions
         System.out.println("\n=== Personality Questions ===");
@@ -36,19 +41,19 @@ public class Survey {
         int q5 = askQuestion("I like making quick decisions");
 
         int totalScore = (q1 + q2 + q3 + q4 + q5) * 4;
-
         System.out.println("\nYour personality score: " + totalScore);
+        SystemLogger.info("Calculated personality score: " + totalScore);
 
-        // ❌ Reject if below 50
+        // Reject if below 50
         if (totalScore < 50) {
-            System.out.println("\n❌ Your score is below 50.");
+            System.out.println("\nYour score is below 50.");
             System.out.println("Unfortunately, you are NOT eligible to participate in competitions.");
             System.out.println("Your registration has been cancelled.\n");
-            return null; // End survey
+            SystemLogger.info("Participant rejected (score < 50): " + name);
+            return null; // End survey early
         }
 
-        // Temporary personality value (final set by thread)
-        String tempType = "Processing...";
+        SystemLogger.info("Participant eligible. Collecting gaming preferences.");
 
         // Gaming preferences (ONLY asked if eligible)
         System.out.println("\n=== Gaming Preferences ===");
@@ -56,21 +61,25 @@ public class Survey {
         int skill = askSkillLevel();
         String role = askRole();
 
-        // Create participant object
+        // Create participant object (personalityType set by processor)
         Participant participant = new Participant(
-                id, name, email, game, skill, role, totalScore, tempType
+                id, name, email, game, skill, role, totalScore, "Processing..."
         );
 
-        // Thread to process and save data
-        SurveyProcessor processor =
-                new SurveyProcessor(participant, fileHandler, CSV_PATH);
-
+        // Submit processing to executor (background)
+        SystemLogger.info("Submitting survey for background processing: " + name);
+        SurveyProcessor processor = new SurveyProcessor(participant, fileHandler, CSV_PATH);
         surveyExecutor.execute(processor);
 
-        System.out.println("\n🧵 Your responses are being processed in the background...");
+        System.out.println("\nYour responses are being processed in the background...");
         System.out.println("Thank you " + name + "!");
-
         return participant;
+    }
+
+    // allow Main to shutdown the survey executor on exit
+    public static void shutdownExecutor() {
+        SystemLogger.info("Shutting down survey executor");
+        surveyExecutor.shutdown();
     }
 
     // ---------------- VALIDATION FUNCTIONS ----------------

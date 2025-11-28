@@ -3,9 +3,11 @@ import java.util.*;
 
 public class FileHandler {
 
+    // Load participants from CSV. Expect header row.
     public List<Participant> loadParticipants(String filePath) {
         List<Participant> participants = new ArrayList<>();
 
+        SystemLogger.info("Reading CSV: " + filePath);
         try {
             BufferedReader reader = new BufferedReader(new FileReader(filePath));
             String line;
@@ -26,21 +28,25 @@ public class FileHandler {
             }
 
             reader.close();
+            SystemLogger.info("Loaded " + participants.size() + " participants from CSV");
             System.out.println("Loaded " + participants.size() + " participants from CSV");
 
         } catch (IOException e) {
+            SystemLogger.error("Error reading CSV: " + e.getMessage());
             System.out.println("Error reading file: " + e.getMessage());
         }
 
         return participants;
     }
 
+    // Parse one CSV line into Participant
     private Participant parseLine(String line) {
         try {
             String[] data = line.split(",");
 
             // Check if we have enough columns
             if (data.length < 8) {
+                SystemLogger.error("Skipping short CSV line: " + line);
                 return null;
             }
 
@@ -53,51 +59,60 @@ public class FileHandler {
             int personalityScore = Integer.parseInt(data[6].trim());
             String personalityType = data[7].trim();
 
-            // Create participant object
             return new Participant(id, name, email, game, skill, role, personalityScore, personalityType);
 
         } catch (Exception e) {
+            SystemLogger.error("Skipping invalid line: " + line + " | error: " + e.getMessage());
             System.out.println("Skipping invalid line: " + line);
             return null;
         }
     }
 
-    // Show loaded participants from CSV
+    // Show loaded participants (console helper)
     public void showParticipants(List<Participant> participants) {
         System.out.println("\n=== Loaded Participants ===");
-        for (int i = 0; i < participants.size(); i++) {  //or i < Math.min(5, participants.size()) middle
+        for (int i = 0; i < participants.size(); i++) {
             System.out.println(participants.get(i));
         }
-        //if (participants.size() > 5) {
-            //System.out.println("... and " + (participants.size() - 5) + " more");
-        //}
     }
 
-    public void saveParticipantsToCSV(Participant participant, String filePath) {
-        try{
+    // Save a single participant to CSV (correct column order)
+    public void saveParticipantToCSV(Participant participant, String filePath) {
+        SystemLogger.info("Saving participant: " + participant.getName());
+        try {
             boolean fileExists = new File(filePath).exists();
-
             FileWriter writer = new FileWriter(filePath, true);
 
             if (!fileExists) {
+                // Header matches the columns below
                 writer.write("ID,Name,Email,PreferredGame,SkillLevel,PreferredRole,PersonalityScore,PersonalityType\n");
             }
 
+            // Write values in the correct order
             writer.write(participant.getId() + "," +
                     participant.getName() + "," +
                     participant.getEmail() + "," +
                     participant.getPreferredGame() + "," +
+                    participant.getSkillLevel() + "," +
+                    participant.getPreferredRole() + "," +
                     participant.getPersonalityScore() + "," +
                     participant.getPersonalityType() + "\n");
 
             writer.close();
-            System.out.println("Participant saved to CSV: " + participant.getName());
+            System.out.println("Saved to CSV: " + participant.getName());
 
-        }catch(IOException e){
-            System.out.println("Error saving participant to CSV: " + e.getMessage());
+        } catch (Exception e) {
+            SystemLogger.error("Error saving participant to CSV: " + e.getMessage());
+            System.out.println("Error saving to CSV: " + e.getMessage());
         }
     }
 
+    // Older method name kept for compatibility. It now delegates to saveParticipantToCSV.
+    public void saveParticipantsToCSV(Participant participant, String filePath) {
+        saveParticipantToCSV(participant, filePath);
+    }
+
+    // Generate next participant ID based on existing CSV
     public String generateNextParticipantId(String filePath) {
         try {
             BufferedReader reader = new BufferedReader(new FileReader(filePath));
@@ -129,37 +144,14 @@ public class FileHandler {
             return "P" + String.format("%03d", maxId + 1);
 
         } catch (Exception e) {
+            // fallback unique id
             return "P" + System.currentTimeMillis();
         }
     }
 
-    public void saveParticipantToCSV(Participant participant, String filePath) {
-        try {
-            boolean fileExists = new File(filePath).exists();
-            FileWriter writer = new FileWriter(filePath, true);
-
-            if (!fileExists) {
-                writer.write("ID,Name,Email,PreferredGame,SkillLevel,PreferredRole,PersonalityScore,PersonalityType\n");
-            }
-
-            writer.write(participant.getId() + "," +
-                    participant.getName() + "," +
-                    participant.getEmail() + "," +
-                    participant.getPreferredGame() + "," +
-                    participant.getSkillLevel() + "," +
-                    participant.getPreferredRole() + "," +
-                    participant.getPersonalityScore() + "," +
-                    participant.getPersonalityType() + "\n");
-
-            writer.close();
-            System.out.println("✅ Saved to CSV: " + participant.getName());
-
-        } catch (Exception e) {
-            System.out.println("❌ Error saving to CSV: " + e.getMessage());
-        }
-    }
-
+    // Save all teams to CSV with rows per participant
     public void saveTeamsToCSV(List<Team> teams, String filePath) {
+        SystemLogger.info("Saving " + teams.size() + " teams to: " + filePath);
         try {
             FileWriter writer = new FileWriter(filePath);
 
@@ -187,9 +179,9 @@ public class FileHandler {
 
             writer.close();
             System.out.println("✅ Saved " + teams.size() + " teams to: " + filePath);
-
         } catch (Exception e) {
-            System.out.println("❌ Error saving teams: " + e.getMessage());
+            SystemLogger.error("Error saving teams: " + e.getMessage());
+            System.out.println("Error saving teams: " + e.getMessage());
         }
     }
 }

@@ -13,7 +13,11 @@ public class TeamFormationTask implements Callable<List<Team>> {
 
     @Override
     public List<Team> call() {
+        // Log thread start and group size
+        SystemLogger.info(Thread.currentThread().getName() + " forming teams for group size: " + group.size());
         TeamFormationStrategy strategy = new BalancedTeamStrategy();
-        return strategy.formTeams(group, teamSize);
+        List<Team> teams = strategy.formTeams(group, teamSize);
+        SystemLogger.info(Thread.currentThread().getName() + " created " + teams.size() + " teams");
+        return teams;
     }
 }

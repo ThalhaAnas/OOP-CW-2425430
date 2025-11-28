@@ -9,13 +9,13 @@ public class Team {
         this.members = new ArrayList<>();
     }
 
-    //constructors
+    // constructors
     public Team(String teamID) {
         this.teamID = teamID;
         this.members = new ArrayList<>();
     }
 
-    //getters and setters
+    // getters and setters
     public String getTeamID() {
         return teamID;
     }
@@ -32,13 +32,14 @@ public class Team {
         this.members = members;
     }
 
-    // methods used to manage teams
+    // add a member if not null
     public void addMember(Participant participant) {
         if (participant != null) {
             members.add(participant);
         }
     }
 
+    // remove a member
     public void removeMember(Participant participant) {
         members.remove(participant);
     }
@@ -47,11 +48,11 @@ public class Team {
         return members.size();
     }
 
+    // calculate average skill safely
     public double getAverageSkill() {
         if (members.isEmpty()) {
             return 0;
         }
-
         int totalSkill = 0;
         for (Participant member : members) {
             totalSkill += member.getSkillLevel();
@@ -64,6 +65,7 @@ public class Team {
         return "Team [teamID=" + teamID + ", size=" + getTeamSize() + ", avgSkill=" + getAverageSkill() + "]";
     }
 
+    // detailed text with members
     public String getTeamDetails() {
         StringBuilder details = new StringBuilder();
         details.append("Team: ").append(teamID)

@@ -7,36 +7,36 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
 
     @Override
     public List<Team> formTeams(List<Participant> participants, int teamSize) {
-        System.out.println("🔧 Forming balanced teams with " + participants.size() + " participants...");
+        // log start
+        SystemLogger.info("BalancedTeamStrategy started. participants=" + (participants == null ? 0 : participants.size()));
+
+        System.out.println("🔧 Forming balanced teams with " + (participants == null ? 0 : participants.size()) + " participants...");
 
         if (participants == null || participants.isEmpty() || teamSize < 2) {
+            SystemLogger.info("No participants or invalid teamSize. Returning empty list.");
             return new ArrayList<>();
         }
 
-        // Categorize participants
+        // categorize by personality type
         List<Participant> leaders = new ArrayList<>();
         List<Participant> thinkers = new ArrayList<>();
         List<Participant> balanced = new ArrayList<>();
 
         for (Participant p : participants) {
             String type = p.getPersonalityType();
-            switch (type) {
-                case "Leader": leaders.add(p); break;
-                case "Thinker": thinkers.add(p); break;
-                case "Balanced": balanced.add(p); break;
-                default: balanced.add(p); break; // Handle any unknown types
-            }
+            if ("Leader".equalsIgnoreCase(type)) leaders.add(p);
+            else if ("Thinker".equalsIgnoreCase(type)) thinkers.add(p);
+            else balanced.add(p); // Balanced or unknown go here
         }
 
-        System.out.println("   Personalities: " + leaders.size() + " Leaders, " +
-                thinkers.size() + " Thinkers, " + balanced.size() + " Balanced");
+        SystemLogger.info("Counts -> Leaders:" + leaders.size() + " Thinkers:" + thinkers.size() + " Balanced:" + balanced.size());
 
-        // Shuffle for fairness
+        // shuffle to add fairness
         Collections.shuffle(leaders);
         Collections.shuffle(thinkers);
         Collections.shuffle(balanced);
 
-        // Calculate optimal team count
+        // compute number of teams (ceil division)
         int totalParticipants = participants.size();
         int teamCount = Math.max(1, (totalParticipants + teamSize - 1) / teamSize);
 
@@ -47,7 +47,7 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
             teams.add(new Team("Team-" + i));
         }
 
-        // PHASE 1: Distribute 1 Leader per team
+        // PHASE 1: give each team a leader if possible
         System.out.println("   1. Distributing leaders...");
         for (Team team : teams) {
             if (!leaders.isEmpty() && team.getTeamSize() < teamSize) {
@@ -55,7 +55,7 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
             }
         }
 
-        // PHASE 2: Distribute 1 Thinker per team
+        // PHASE 2: give each team one thinker
         System.out.println("   2. Distributing thinkers...");
         for (Team team : teams) {
             if (!thinkers.isEmpty() && team.getTeamSize() < teamSize) {
@@ -63,7 +63,7 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
             }
         }
 
-        // PHASE 3: Fill with Balanced participants
+        // PHASE 3: fill with balanced participants
         System.out.println("   3. Filling with balanced...");
         for (Team team : teams) {
             while (team.getTeamSize() < teamSize && !balanced.isEmpty()) {
@@ -71,7 +71,7 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
             }
         }
 
-        // PHASE 4: Add second thinkers where possible
+        // PHASE 4: try to add a second thinker if possible
         System.out.println("   4. Adding second thinkers...");
         for (Team team : teams) {
             int currentThinkers = countType(team, "Thinker");
@@ -83,7 +83,7 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
             }
         }
 
-        // PHASE 5: Handle leftovers with round-robin
+        // PHASE 5: handle leftovers in round-robin
         List<Participant> leftovers = new ArrayList<>();
         leftovers.addAll(leaders);
         leftovers.addAll(thinkers);
@@ -93,31 +93,27 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
 
         if (!leftovers.isEmpty()) {
             int index = 0;
-            while (!leftovers.isEmpty()) {
+            int safety = 0;
+            while (!leftovers.isEmpty() && safety < 2000) {
                 Team team = teams.get(index % teams.size());
                 if (team.getTeamSize() < teamSize) {
                     Participant p = leftovers.remove(0);
-
-                    // Check if adding this leader would exceed max leaders
-                    if (p.getPersonalityType().equals("Leader")) {
+                    if ("Leader".equalsIgnoreCase(p.getPersonalityType())) {
                         if (countType(team, "Leader") < MAX_LEADERS_PER_TEAM) {
                             team.addMember(p);
                         } else {
-                            // Skip this leader for now, try other teams
-                            leftovers.add(p);
+                            leftovers.add(p); // try later
                         }
                     } else {
                         team.addMember(p);
                     }
                 }
                 index++;
-
-                // Safety break
-                if (index > 1000) break;
+                safety++;
             }
         }
 
-        // PHASE 6: Create extra teams if still leftovers
+        // PHASE 6: create extra teams if needed for leftover participants
         int extraTeamCount = 0;
         while (!leftovers.isEmpty()) {
             Team extraTeam = new Team("Extra-Team-" + (++extraTeamCount));
@@ -128,17 +124,20 @@ public class BalancedTeamStrategy implements TeamFormationStrategy {
             teams.add(extraTeam);
         }
 
-        // Remove any empty teams
+        // remove any empty teams just in case
         teams.removeIf(team -> team.getMembers().isEmpty());
 
-        System.out.println("✅ Final: " + teams.size() + " teams created");
+        System.out.println("Final: " + teams.size() + " teams created");
+        SystemLogger.info("BalancedTeamStrategy finished. createdTeams=" + teams.size());
+
         return teams;
     }
 
+    // helper to count participants of a given personality in a team
     private int countType(Team team, String type) {
         int count = 0;
         for (Participant p : team.getMembers()) {
-            if (p.getPersonalityType().equals(type)) {
+            if (p.getPersonalityType() != null && p.getPersonalityType().equalsIgnoreCase(type)) {
                 count++;
             }
         }

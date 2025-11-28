@@ -13,34 +13,35 @@ public class SurveyProcessor implements Runnable {
     @Override
     public void run() {
         try {
-            System.out.println("⏳ Processing survey data for " + participant.getName() + "...");
-
-           // Thread.sleep(1000); // optional demonstration delay
+            SystemLogger.info("Survey thread started for: " + participant.getName());
+            System.out.println("Processing survey data for " + participant.getName() + "...");
 
             int score = participant.getPersonalityScore();
 
-            // Updated classification
+            // Assign personality type using your updated ranges
             if (score >= 90) {
                 participant.setPersonalityType("Leader");
-            }
-            else if (score >= 70) {
+            } else if (score >= 70) {
                 participant.setPersonalityType("Balanced");
-            }
-            else if (score >= 50) {
+            } else if (score >= 50) {
                 participant.setPersonalityType("Thinker");
-            }
-            else {
+            } else {
                 participant.setPersonalityType("Not Eligible");
             }
 
+            SystemLogger.info("Final personality for " + participant.getName() + ": " + participant.getPersonalityType());
+
             // Save to CSV
             fileHandler.saveParticipantToCSV(participant, filePath);
+            SystemLogger.info("Saved participant to CSV: " + participant.getName());
 
-            System.out.println("✅ Survey processed for " + participant.getName() +
+            System.out.println("Survey processed for " + participant.getName() +
                     " | Final Personality: " + participant.getPersonalityType());
 
         } catch (Exception e) {
-            System.out.println("❌ Error in survey thread: " + e.getMessage());
+            SystemLogger.error("Survey thread error for " + (participant == null ? "unknown" : participant.getName())
+                    + ": " + e.getMessage());
+            System.out.println("Error in survey thread: " + e.getMessage());
         }
     }
 }

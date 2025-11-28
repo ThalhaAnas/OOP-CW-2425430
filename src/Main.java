@@ -4,6 +4,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class Main {
+    // 2-thread pool for team formation tasks
     private static ExecutorService teamExecutor = Executors.newFixedThreadPool(2);
     private static Scanner scanner = new Scanner(System.in);
     private static FileHandler fileHandler = new FileHandler();
@@ -13,6 +14,7 @@ public class Main {
     static int teamSize = 4; // default team size
 
     public static void main(String[] args) {
+        SystemLogger.info("Application started");
         System.out.println("=== Welcome to TeamMate System ===");
 
         while (true) {
@@ -27,6 +29,10 @@ public class Main {
                     organizerMenu();
                     break;
                 case 3:
+                    // shutdown executors and exit
+                    SystemLogger.info("Application shutting down");
+                    survey.shutdownExecutor(); // stop survey executor
+                    teamExecutor.shutdown();
                     System.out.println("Thank you for using TeamMate System!");
                     return;
             }
@@ -102,8 +108,10 @@ public class Main {
             path = "data/participants_sample.csv";
         }
 
+        SystemLogger.info("Loading participants from: " + path);
         allParticipants = fileHandler.loadParticipants(path);
         System.out.println("✅ Loaded " + allParticipants.size() + " participants");
+        SystemLogger.info("Total participants loaded: " + allParticipants.size());
     }
 
     private static void viewParticipants() {
@@ -127,6 +135,7 @@ public class Main {
                 teamSize = 4;
             } else {
                 System.out.println("✅ Team size set to: " + teamSize);
+                SystemLogger.info("Team size set to: " + teamSize);
             }
         } catch (Exception e) {
             System.out.println("❌ Invalid number");
@@ -146,41 +155,48 @@ public class Main {
         }
 
         System.out.println("🔧 Running parallel team formation using 2 threads...");
+        SystemLogger.info("Starting parallel team formation (2 threads, teamSize=" + teamSize + ")");
 
         try {
-            // Split participants into 2 groups
+            // Split participants into 2 groups (roughly half)
             int mid = allParticipants.size() / 2;
 
             List<Participant> group1 = allParticipants.subList(0, mid);
             List<Participant> group2 = allParticipants.subList(mid, allParticipants.size());
 
-            // Submit tasks
+            SystemLogger.info("Group A size: " + group1.size() + ", Group B size: " + group2.size());
+
+            // Submit tasks to executor
             Future<List<Team>> f1 = teamExecutor.submit(new TeamFormationTask(group1, teamSize));
             Future<List<Team>> f2 = teamExecutor.submit(new TeamFormationTask(group2, teamSize));
 
-            // Get the results
+            // Wait for both to finish
             List<Team> t1 = f1.get();
             List<Team> t2 = f2.get();
 
-            // Combine the results
+            // combine results
             formedTeams = new ArrayList<>();
             formedTeams.addAll(t1);
             formedTeams.addAll(t2);
 
-            // FIX: Rename teams sequentially so no ID duplicates
+            SystemLogger.info("Teams formed before renaming: " + formedTeams.size());
+
+            // Rename teams sequentially so IDs are unique
             for (int i = 0; i < formedTeams.size(); i++) {
                 formedTeams.get(i).setTeamID("Team " + (i + 1));
             }
+
+            SystemLogger.info("Teams renamed sequentially");
 
             System.out.println("✅ Teams formed successfully using concurrency!");
             showTeamStatistics();
             showFormationSummary();
 
         } catch (Exception e) {
+            SystemLogger.error("Error during parallel team formation: " + e.getMessage());
             System.out.println("❌ Error during parallel team formation: " + e.getMessage());
         }
     }
-
 
     private static void showTeamStatistics() {
         System.out.println("\n📊 TEAM STATISTICS:");
@@ -235,15 +251,15 @@ public class Main {
                 .sum();
 
         if (smallTeams > 0) {
-            System.out.println("⚠️  Warning: " + smallTeams + " teams are significantly smaller than target size");
+            System.out.println("Warning: " + smallTeams + " teams are significantly smaller than target size");
         } else {
-            System.out.println("✅ All teams are reasonably sized");
+            System.out.println("All teams are reasonably sized");
         }
     }
 
     private static void viewFormedTeams() {
         if (formedTeams.isEmpty()) {
-            System.out.println("❌ No teams formed yet. Run team formation first.");
+            System.out.println("No teams formed yet. Run team formation first.");
             return;
         }
 
@@ -256,10 +272,11 @@ public class Main {
 
     private static void saveTeamsToCSV() {
         if (formedTeams.isEmpty()) {
-            System.out.println("❌ No teams to save. Run team formation first.");
+            System.out.println("No teams to save. Run team formation first.");
             return;
         }
 
+        SystemLogger.info("Saving teams to CSV: data/formed_teams.csv");
         fileHandler.saveTeamsToCSV(formedTeams, "data/formed_teams.csv");
     }
 
