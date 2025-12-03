@@ -39,11 +39,6 @@ public class Team {
         }
     }
 
-    // remove a member
-    public void removeMember(Participant participant) {
-        members.remove(participant);
-    }
-
     public int getTeamSize() {
         return members.size();
     }
